@@ -1,0 +1,104 @@
+TARGET= targets/console/
+BUILD= build/console/
+
+#normal debug
+#CFLAGS= -Wall -O2  -g -Wfatal-errors
+
+CFLAGS= -Wall -Wstrict-prototypes -Wfatal-errors
+CFLAGS+= -fstack-protector-strong -Wformat -Werror=format-security -Wextra
+CFLAGS+= -O2 -g
+CFLAGS+= -DRSA_BYTES=128 -DCARD_RESTART -I$(TARGET)
+
+# this is used to generate statistics for RSA keygen code (or enable this in card_os/debug.h)
+#CFLAGS+= -DRSA_GEN_DEBUG
+#grep -v close rsa_gen_debug.stat |grep -v 0x| awk '{g+=$2;r+=$4}END{print g/NR" "r/NR}
+#grep close rsa_gen_debug.stat |awk '{c+=$2;s+=$4}END{print s" "c}'
+# to test prime generator:
+#grep 0x rsa_gen_debug.stat|awk '{print "IsPrime("$1")"}' |genius|grep -v true
+
+CC= gcc
+##CFLAGS+= -D_FORTIFY_SOURCE=2
+#CC= cgcc -Wsparse-all
+#CC=afl-clang-fast
+#ASAN_OPTIONS=symbolize=0 AFL_USE_ASAN=1
+
+all:	$(BUILD)console $(BUILD)libOsEIDsim.so
+
+#Tested without NIST_ONLY, but not set as default
+#CFLAGS += -DNIST_ONLY
+
+# exponentation window
+CFLAGS += -DE_BITS=4
+
+# ECC size (in bytes 24,32,48,72)
+CFLAGS += -DMP_BYTES=72
+
+# precalculate inverse P and Q into key file
+CFLAGS += -DUSE_P_Q_INV
+
+# enable exponent blinding
+CFLAGS += -DRSA_EXP_BLINDING
+
+# enable protection for single error in CRT
+CFLAGS += -DPREVENT_CRT_SINGLE_ERROR
+
+# MyEID does not support 56 bit des version, OsEID allow this if needed
+#CFLAGS += -DENABLE_DES56
+
+CFLAGS += -DPROTOCOL_T0 -DPROTOCOL_T1
+CFLAGS += -DTRANSMISSION_PROTOCOL_MODE_NEGOTIABLE
+
+
+.PHONY:	builddir all
+
+builddir:
+	@rm -rf $(BUILD)
+	@mkdir -p $(BUILD)
+
+#-------------------------------------------------------------------
+# target platform files
+#-------------------------------------------------------------------
+$(BUILD)card_io.o: $(TARGET)card_io.c
+	$(CC) $(CFLAGS) -o $(BUILD)card_io.o -c $(TARGET)card_io.c -I$(TARGET) -Icard_os
+
+$(BUILD)mem_device.o:	$(TARGET)mem_device.c
+	$(CC) $(CFLAGS) -o $(BUILD)mem_device.o -c $(TARGET)mem_device.c -I$(TARGET) -Icard_os
+
+$(BUILD)rnd.o:	$(TARGET)rnd.c
+	$(CC) $(CFLAGS) -o $(BUILD)rnd.o -c $(TARGET)rnd.c -Icard_os
+
+#-------------------------------------------------------------------
+# Target specific files
+#-------------------------------------------------------------------
+
+TARGET_S = $(TARGET)pcscd/OsEIDsim/
+
+sim_version="0.0.1"
+
+
+$(BUILD)libOsEIDsim.so:
+	$(CC) -shared -O2 -g -Wall -fPIC -I.  `pkg-config libpcsclite --cflags` -o $(BUILD)libOsEIDsim.so $(TARGET_S)ifdhandler.c $(TARGET_S)serial.c $(TARGET_S)hex2bytes.c
+	chmod -x $(BUILD)libOsEIDsim.so
+	(cd  $(BUILD); ln -s libOsEIDsim.so libOsEIDsim.so.$(sim_version))
+	cp $(TARGET_S)run_pcscd.sh $(BUILD)
+
+
+.PHONY: all clean
+
+#-------------------------------------------------------------------
+# card_os files
+#-------------------------------------------------------------------
+
+include card_os/Makefile
+
+	
+$(BUILD)console:	builddir $(COMMON_TARGETS) $(BUILD)card_io.o $(BUILD)mem_device.o $(BUILD)rnd.o
+	$(CC) $(CFLAGS) -o $(BUILD)console $(COMMON_TARGETS) $(BUILD)card_io.o $(BUILD)mem_device.o $(BUILD)rnd.o
+
+clean:
+	rm -f *~
+	rm -f card_os/*~
+	rm -f $(TARGET)/*~
+	rm -f $(BUILD)/*
+
+	

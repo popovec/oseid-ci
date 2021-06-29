@@ -14,5 +14,27 @@ jobs:
       - name: List files in the repository
         run: |
           ls ${{ github.workspace }}
+          dpkg -l
+          cd src
+          make -f Makefile.console
+          mkdir tmp;
+          socat -d -d pty,link=tmp/OsEIDsim.socket,raw,echo=0 "exec:build/console/console ...,pty,raw,echo=0" &
+          PID=$!;
+          sleep 1
+          echo "# OsEIDsim" > tmp/reader.conf
+          echo 'FRIENDLYNAME      "OsEIDsim"' >> tmp/reader.conf
+          echo "DEVICENAME        ${{ github.workspace }}/src/tmp/OsEIDsim.socket" >> tmp/reader.conf
+          echo "LIBPATH           ${{ github.workspace }}/src/build/console/libOsEIDsim.so.0.0.1" >> tmp/reader.conf;
+          echo "CHANNELID         1" >> tmp/reader.conf
+          sudo mv tmp/reader.conf /etc/reader.conf.d/reader.conf
+          cat /etc/reader.conf.d/reader.conf
+          sudo systemctl stop pcscd.service pcscd.socket
+          sudo systemctl start pcscd.service pcscd.socket;
+          opensc-tool -l
+          cd ${{ github.workspace }}/tools
+          echo | ./OsEID-tool INIT;
+          ./OsEID-tool RSA-CREATE-KEYS;
+          ./OsEID-tool RSA-UPLOAD-KEYS;
+          ./OsEID-tool RSA-DECRYPT-TEST;
+          kill -9 $PID;
       - run: echo "This job's status is ${{ job.status }}."
-          

@@ -14,7 +14,7 @@ jobs:
       - name: List files in the repository
         run: |
           ls ${{ github.workspace }}
-          sudo apt install libpcsclite-dev pcscd socat opensc 
+          sudo apt install libpcsclite-dev pcscd socat opensc pcsc-tools
           dpkg -l
           cd src
           make -f Makefile.console

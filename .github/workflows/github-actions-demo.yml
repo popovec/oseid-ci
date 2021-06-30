@@ -1,7 +1,7 @@
-name: GitHub Actions for OsEID
+name: GitHub Actions Demo
 on: [push]
 jobs:
-  OsEID-GitHub-Actions:
+  Explore-GitHub-Actions:
     runs-on: ubuntu-latest
     steps:
       - run: echo "The job was automatically triggered by a ${{ github.event_name }} event."
@@ -10,12 +10,9 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v2
       - run: echo "The ${{ github.repository }} repository has been cloned to the runner."
-      - name: Install additional packages
+      - name: OsEID test
         run: |
-          sudo apt-get install libpcsclite-dev pcscd socat pcsc-tools
-          sudo apt-get install opensc
-      - name: OsEID compile and run
-        run: |
+          sudo apt install libpcsclite-dev pcscd socat opensc pcsc-tools
           cd src
           make -f Makefile.console
           mkdir tmp;
@@ -31,12 +28,10 @@ jobs:
           cat /etc/reader.conf.d/reader.conf
           sudo systemctl stop pcscd.service pcscd.socket
           sudo systemctl start pcscd.service pcscd.socket
-      - name: OsEID test (OpenSC from ubuntu-latest)
-        run: |
           opensc-tool -l
           cd ${{ github.workspace }}/tools
           ./OsEID-tool FULL-TEST
-      - name: compile OpenSC from git
+      - name: opensc from git              
         run: |
           sudo dpkg --purge opensc
           cd ${{ github.workspace }}
@@ -46,9 +41,11 @@ jobs:
           ./bootstrap;
           ./configure;
           sudo make install;
-      - name: OsEID test (OpenSC from git)
-        run: |
           export LD_LIBRARY_PATH=/usr/local/lib;
           cd ${{ github.workspace }}/tools
           ./OsEID-tool FULL-TEST
+      - name: cleanup    
+        run: |
+          kill -9 $PID;
+          sleep 1
       - run: echo "This job's status is ${{ job.status }}."

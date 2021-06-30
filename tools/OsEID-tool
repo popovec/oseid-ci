@@ -27,25 +27,13 @@
 #
 #export OPENSC_DEBUG=255
 failecho (){
-	if [ "x" == "x${TERM}" ]; then
-		echo $@
-	else
-		tput setaf 1;echo $@;tput sgr0
-	fi
+	tput setaf 1 2>/dev/null;echo $@;tput sgr0 2>/dev/null
 }
 trueecho (){
-	if [ "x" == "x${TERM}" ]; then
-		echo $@
-	else
-		tput setaf 2;echo $@;tput sgr0
-	fi
+	tput setaf 2 2>/dev/null;echo $@;tput sgr0 2>/dev/null
 }
 warnecho (){
-	if [ "x" == "x${TERM}" ]; then
-		echo $@
-	else
-		tput setaf 3;echo $@;tput sgr0
-	fi
+	tput setaf 3 2>/dev/null;echo $@;tput sgr0 2>/dev/null
 }
 
 mechanism2hash () {
@@ -470,8 +458,6 @@ fi
 #***************************************************************************************************************************
 if [ $mode == "FULL-TEST" ]; then
 	set -e
-	echo $TERM
-	echo "...."
 	$0 RSA-CREATE-KEYS
 	$0 EC-CREATE-KEYS
 
@@ -497,9 +483,9 @@ if [ $mode == "FULL-TEST" ]; then
 	$0 EC-ECDH-TEST
 
 	$0 DES-AES-UPLOAD-KEYS
-	if [ $OPENSC_VERSION -lt 22000 ]; then
-		echo "Old OpenSC version, not running wrap/unwrap test"
-        else
+	if [ $OPENSC_VERSION -lt 23000 ]; then
+		echo "OpenSC version without support for wrap/unwrap, skipping wrap/unwrap test "
+	else
 		$0 UNWRAP-WRAP-TEST
 	fi
 	$0 ERASE-CARD

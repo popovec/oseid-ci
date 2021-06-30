@@ -13,7 +13,6 @@ jobs:
       - name: OsEID test
         run: |
           sudo apt install libpcsclite-dev pcscd socat opensc pcsc-tools
-          dpkg -l
           cd src
           make -f Makefile.console
           mkdir tmp;
@@ -32,6 +31,21 @@ jobs:
           opensc-tool -l
           cd ${{ github.workspace }}/tools
           ./OsEID-tool FULL-TEST
+      - name: opensc from git              
+        run: |
+          sudo dpkg --purge opensc
+          cd ${{ github.workspace }}
+          git clone https://github.com/OpenSC/OpenSC
+          set -ex;
+          cd OpenSC/;
+          ./bootstrap;
+          ./configure;
+          sudo make install;
+          export LD_LIBRARY_PATH=/usr/local/lib;
+          cd ${{ github.workspace }}/tools
+          ./OsEID-tool FULL-TEST
+      - name: cleanup    
+        run: |
           kill -9 $PID;
           sleep 1
       - run: echo "This job's status is ${{ job.status }}."

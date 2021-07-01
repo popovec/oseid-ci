@@ -132,8 +132,6 @@ if [ $? -ne 0 ]; then
 	echo "please check: gawk pkcs15-init pkcs15-tool sha1sum pkcs15-crypt openssl opensc-tool scriptor tr xxd"
 	exit 1
 fi
-#github action workround test
-export TERM=xterm-256color
 
 if [ $# -ge  1 ]; then
 	mode=$1

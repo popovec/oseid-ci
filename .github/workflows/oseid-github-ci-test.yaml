@@ -35,7 +35,8 @@ jobs:
         run: |
           opensc-tool -l
           cd ${{ github.workspace }}/tools
-          ./OsEID-tool FULL-TEST
+          export TERM=xterm-256color
+          ./OsEID-tool FAST-TEST
       - name: compile OpenSC from git
         run: |
           sudo dpkg --purge opensc
@@ -50,5 +51,6 @@ jobs:
         run: |
           export LD_LIBRARY_PATH=/usr/local/lib;
           cd ${{ github.workspace }}/tools
+          export TERM=xterm-256color
           ./OsEID-tool FULL-TEST
       - run: echo "This job's status is ${{ job.status }}."

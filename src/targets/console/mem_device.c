@@ -3,7 +3,7 @@
 
     This is part of OsEID (Open source Electronic ID)
 
-    Copyright (C) 2015-2019 Peter Popovec, popovec.peter@gmail.com
+    Copyright (C) 2015-2023 Peter Popovec, popovec.peter@gmail.com
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
     mem device driver for filesystem in disc file
 
 */
+/* *INDENT-OFF* */
 #include <stdint.h>
 #include "mem_device.h"
 
@@ -47,6 +48,7 @@ static uint8_t mem[MEMSIZE];
 #define SECSIZE 1024
 static uint8_t sd[SECSIZE];
 
+uint8_t change_counter[2];
 
 static uint8_t
 device_writeback (void)
@@ -74,6 +76,11 @@ device_writeback (void)
       close (f);
       return 1;
     }
+  if (sizeof(change_counter) != write (f, &change_counter, sizeof(change_counter)))
+    {
+      close (f);
+      return 1;
+    }
   close (f);
   return 0;
 }
@@ -91,6 +98,8 @@ device_init (void)
     {
       memset (mem, 0xff, MEMSIZE);
       memset (sd, 0xff, SECSIZE);
+      change_counter[0] = 0;
+      change_counter[1] = 0;
       if (device_writeback ())
 	return 1;
       initialized = 1;
@@ -112,9 +121,30 @@ device_init (void)
       close (f);
       return 1;
     }
+  if (sizeof(change_counter) != read (f, change_counter, sizeof(change_counter)))
+    {
+      close (f);
+      return 1;
+    }
   initialized = 1;
   close (f);
   return 0;
+}
+
+static void update_change_counter(void){
+	int c;
+
+	if(device_init ())
+		return;
+	c = change_counter[0];
+	c |= change_counter[1] << 8;
+	c++;
+	change_counter[0] = c & 0xff;
+	change_counter[1] = c >> 8;
+}
+
+uint16_t device_get_change_counter(){
+	return change_counter[0] | ((uint16_t)change_counter[1] << 8);
 }
 
 // size 0 is interpreted as 256!
@@ -195,40 +225,57 @@ device_write_block (void *buffer, uint16_t offset, uint8_t size)
     return 1;
 
   memcpy (mem + offset, buffer, s);
-
+  update_change_counter();
   if (device_writeback ())
     return 1;
 
   return 0;
 }
+/* *INDENT-ON* */
 
-// fill block at offset _offset_ with value 0xff of maximal length _size_
-// return number of filled bytes (-1 on error)
-int16_t
-device_write_ff (uint16_t offset, uint8_t size_in)
+// fill block at offset _offset_ with value 0xff
+uint8_t device_write_ff(uint16_t offset, uint8_t size)
 {
-  uint32_t s;
-  uint16_t size = size_in;
+	uint32_t overflow, s;
 
-  if (size_in == 0)
-    size = 256;
+	s = size ? size : 256;
+	overflow = offset + s - 1;
 
-  if (device_init ())
-    return -1;
+	if (overflow > MEMSIZE)
+		return 1;
 
-#if MEMSIZE != 65536
-  if (offset >= MEMSIZE)
-    return -1;
-#endif
+	if (device_init())
+		return -1;
 
-  s = MEMSIZE - (uint32_t) offset;
-  if (s > size)
-    s = size;
+	memset(mem + offset, 0xff, s);
+	update_change_counter();
 
-  memset (mem + offset, 0xff, s);
+	if (device_writeback())
+		return -1;
 
-  if (device_writeback ())
-    return -1;
+	return 0;
+}
 
-  return s;
+uint8_t device_format()
+{
+
+	if (device_init())
+		return -1;
+	memset(mem, 0xff, MEMSIZE);
+	if (device_writeback())
+		return -1;
+	return 0;
+}
+
+uint8_t sec_device_format()
+{
+
+	if (device_init())
+		return -1;
+
+	memset(sd, 0xff, SECSIZE);
+
+	if (device_writeback())
+		return -1;
+	return 0;
 }

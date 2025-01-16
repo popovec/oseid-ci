@@ -3,7 +3,7 @@
 
     This is part of OsEID (Open source Electronic ID)
 
-    Copyright (C) 2015-2021 Peter Popovec, popovec.peter@gmail.com
+    Copyright (C) 2015-2025 Peter Popovec, popovec.peter@gmail.com
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -40,11 +40,15 @@
 #if GCC_VERSION == 50400
 #define X_GCC_OK
 #endif
-
-#ifndef X_GCC_OK
-#error only AVR GCC version 4.8.1 / 4.9.2 / 5.4.0 are tested to compile this code
+#if GCC_VERSION == 70400
+#define X_GCC_OK
 #endif
 
+#ifndef X_GCC_OK
+#warning only AVR GCC version 4.8.1 / 4.9.2 / 5.4.0 are tested to compile this code
+#endif
+
+#pragma GCC diagnostic ignored "-Wmisleading-indentation"
 
 void init_cpu (void) __attribute__((naked))
   __attribute__((section (".init1")));
